@@ -14,7 +14,7 @@ export function HomePage({go}){
   </>
 }
 
-export function JobsPage({saved,setSaved,query,setQuery,workMode,setWorkMode,toast}){
+export function JobsPage({saved,setSaved,query,setQuery,workMode,setWorkMode,toast,go}){
   const[more,setMore]=useState(false);
   const[type,setType]=useState("All");
   const[minMatch,setMinMatch]=useState(0);
@@ -25,8 +25,8 @@ export function JobsPage({saved,setSaved,query,setQuery,workMode,setWorkMode,toa
     <div className="card filters"><div className="input-icon"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search jobs, skills or companies"/></div><select value={workMode} onChange={e=>setWorkMode(e.target.value)}><option>All</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select><button className="secondary" onClick={()=>setMore(!more)}><SlidersHorizontal size={16}/>{more?"Hide filters":"More filters"}</button></div>
     {more&&<div className="card advanced-filters"><Field label="Employment type"><select value={type} onChange={e=>setType(e.target.value)}><option>All</option><option>Full-time</option><option>Internship</option></select></Field><Field label="Minimum match"><select value={minMatch} onChange={e=>setMinMatch(Number(e.target.value))}><option value="0">Any match</option><option value="85">85%+</option><option value="90">90%+</option><option value="95">95%+</option></select></Field><button className="secondary mini" onClick={()=>{setType("All");setMinMatch(0)}}>Clear filters</button></div>}
     <div className="result-line"><b>{list.length} opportunities</b><span>Verified employers prioritized</span></div>
-    <div className="grid3">{list.map(job=><PublicJobCard key={job.id} job={job} saved={saved.includes(job.id)} onSave={()=>toggle(job.id)} onDetails={()=>setSelected(job)} onApply={()=>toast("Sign in to continue the demo application")}/>)}</div>
-    <DemoModal open={!!selected} title={selected?.title||"Job details"} subtitle={selected?.company+" - "+selected?.location} onClose={()=>setSelected(null)} footer={<><button className="secondary" onClick={()=>{if(selected)toggle(selected.id)}}>{selected&&saved.includes(selected.id)?"Remove saved":"Save job"}</button><button className="primary" onClick={()=>{toast("Sign in to apply");setSelected(null)}}>Apply now</button></>}>
+    <div className="grid3">{list.map(job=><PublicJobCard key={job.id} job={job} saved={saved.includes(job.id)} onSave={()=>toggle(job.id)} onDetails={()=>setSelected(job)} onApply={()=>go("auth")}/>)}</div>
+    <DemoModal open={!!selected} title={selected?.title||"Job details"} subtitle={selected?.company+" - "+selected?.location} onClose={()=>setSelected(null)} footer={<><button className="secondary" onClick={()=>{if(selected)toggle(selected.id)}}>{selected&&saved.includes(selected.id)?"Remove saved":"Save job"}</button><button className="primary" onClick={()=>{setSelected(null);go("auth")}}>Apply now</button></>}>
       <div className="modal-grid"><div><div className="eyebrow">Salary</div><h3>{selected?.salary}</h3></div><div><div className="eyebrow">Match</div><h3>{selected?.match}%</h3></div></div><p className="muted">Build product experiences with a collaborative engineering team. This is synthetic portfolio content.</p><div className="chips">{selected?.skills?.map(skill=><span key={skill}>{skill}</span>)}</div>
     </DemoModal>
   </div></section>
@@ -34,8 +34,12 @@ export function JobsPage({saved,setSaved,query,setQuery,workMode,setWorkMode,toa
 
 export function CompaniesPage({toast}){
   const[followed,setFollowed]=useState([]);
+  const[selected,setSelected]=useState(null);
   return <section className="section"><div className="wrap"><PageIntro eyebrow="Company discovery" title="Know the team before you apply" text="Explore verified employers, hiring activity and workplace signals."/>
-    <div className="grid3">{companies.map(company=><div className="card company-card" key={company.id}><div className="company-logo large">{company.initials}</div><h3>{company.name}</h3><p>{company.about}</p><div className="meta-line"><span>{company.sector}</span><span>{company.size}</span><span>{company.location}</span></div><div className="chips"><span><BadgeCheck size={13}/>{company.status}</span><span>{company.jobs} open roles</span></div><div className="dual"><button className="secondary" onClick={()=>setFollowed(f=>f.includes(company.id)?f.filter(x=>x!==company.id):[...f,company.id])}>{followed.includes(company.id)?"Following":"Follow"}</button><button className="primary" onClick={()=>toast(company.name+" profile opened")}>View company</button></div></div>)}</div>
+    <div className="grid3">{companies.map(company=><div className="card company-card" key={company.id}><div className="company-logo large">{company.initials}</div><h3>{company.name}</h3><p>{company.about}</p><div className="meta-line"><span>{company.sector}</span><span>{company.size}</span><span>{company.location}</span></div><div className="chips"><span><BadgeCheck size={13}/>{company.status}</span><span>{company.jobs} open roles</span></div><div className="dual"><button className="secondary" onClick={()=>setFollowed(f=>f.includes(company.id)?f.filter(x=>x!==company.id):[...f,company.id])}>{followed.includes(company.id)?"Following ✓":"Follow"}</button><button className="primary" onClick={()=>setSelected(company)}>View company</button></div></div>)}</div>
+    <DemoModal open={!!selected} title={selected?.name||"Company"} subtitle={(selected?.sector||"")+" - "+(selected?.location||"")} onClose={()=>setSelected(null)} footer={<button className="primary" onClick={()=>{toast("Company followed from profile");setFollowed(f=>selected&&!f.includes(selected.id)?[...f,selected.id]:f);setSelected(null)}}>Follow company</button>}>
+      <div className="company-profile-demo"><div className="company-hero"><div className="company-logo large">{selected?.initials}</div><div><h3>{selected?.name}</h3><p>{selected?.about}</p></div></div><div className="modal-grid"><div><div className="eyebrow">Open roles</div><h3>{selected?.jobs}</h3></div><div><div className="eyebrow">Followers</div><h3>{selected?.followers}</h3></div></div><div className="eyebrow">Company size</div><h3>{selected?.size}</h3><div><div className="eyebrow">Status</div><h3>{selected?.status}</h3></div></div></div>
+    </DemoModal>
   </div></section>
 }
 
