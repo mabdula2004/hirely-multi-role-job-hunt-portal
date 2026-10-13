@@ -1,7 +1,7 @@
 import React,{useMemo,useState} from "react";
 import {ArrowUpRight,BadgeCheck,CheckCircle2,Filter,MapPin,Search,SlidersHorizontal} from "lucide-react";
 import {companies,jobs} from "../data/mockData";
-import {DemoButton,Field,PageIntro,PublicJobCard,SectionTitle} from "../components/Common";
+import {DemoButton,DemoModal,Field,PageIntro,PublicJobCard,SectionTitle} from "../components/Common";
 
 export function HomePage({go}){
   return <>
@@ -15,12 +15,20 @@ export function HomePage({go}){
 }
 
 export function JobsPage({saved,setSaved,query,setQuery,workMode,setWorkMode,toast}){
-  const list=useMemo(()=>jobs.filter(job=>(!query||JSON.stringify(job).toLowerCase().includes(query.toLowerCase()))&&(workMode==="All"||job.mode===workMode)),[query,workMode]);
+  const[more,setMore]=useState(false);
+  const[type,setType]=useState("All");
+  const[minMatch,setMinMatch]=useState(0);
+  const[selected,setSelected]=useState(null);
+  const list=useMemo(()=>jobs.filter(job=>(!query||JSON.stringify(job).toLowerCase().includes(query.toLowerCase()))&&(workMode==="All"||job.mode===workMode)&&(type==="All"||job.type===type)&&job.match>=minMatch),[query,workMode,type,minMatch]);
   const toggle=id=>{setSaved(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);toast(saved.includes(id)?"Removed from saved jobs":"Job saved")};
   return <section className="section"><div className="wrap"><PageIntro eyebrow="Job marketplace" title="Find the right opportunity" text="Search by role, company, skill or location and refine by work mode."/>
-    <div className="card filters"><div className="input-icon"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search jobs, skills or companies"/></div><select value={workMode} onChange={e=>setWorkMode(e.target.value)}><option>All</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select><button className="secondary"><SlidersHorizontal size={16}/>More filters</button></div>
+    <div className="card filters"><div className="input-icon"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search jobs, skills or companies"/></div><select value={workMode} onChange={e=>setWorkMode(e.target.value)}><option>All</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select><button className="secondary" onClick={()=>setMore(!more)}><SlidersHorizontal size={16}/>{more?"Hide filters":"More filters"}</button></div>
+    {more&&<div className="card advanced-filters"><Field label="Employment type"><select value={type} onChange={e=>setType(e.target.value)}><option>All</option><option>Full-time</option><option>Internship</option></select></Field><Field label="Minimum match"><select value={minMatch} onChange={e=>setMinMatch(Number(e.target.value))}><option value="0">Any match</option><option value="85">85%+</option><option value="90">90%+</option><option value="95">95%+</option></select></Field><button className="secondary mini" onClick={()=>{setType("All");setMinMatch(0)}}>Clear filters</button></div>}
     <div className="result-line"><b>{list.length} opportunities</b><span>Verified employers prioritized</span></div>
-    <div className="grid3">{list.map(job=><PublicJobCard key={job.id} job={job} saved={saved.includes(job.id)} onSave={()=>toggle(job.id)} onApply={()=>toast("Application flow opened - demo")}/>)}</div>
+    <div className="grid3">{list.map(job=><PublicJobCard key={job.id} job={job} saved={saved.includes(job.id)} onSave={()=>toggle(job.id)} onDetails={()=>setSelected(job)} onApply={()=>toast("Sign in to continue the demo application")}/>)}</div>
+    <DemoModal open={!!selected} title={selected?.title||"Job details"} subtitle={selected?.company+" - "+selected?.location} onClose={()=>setSelected(null)} footer={<><button className="secondary" onClick={()=>{if(selected)toggle(selected.id)}}>{selected&&saved.includes(selected.id)?"Remove saved":"Save job"}</button><button className="primary" onClick={()=>{toast("Sign in to apply");setSelected(null)}}>Apply now</button></>}>
+      <div className="modal-grid"><div><div className="eyebrow">Salary</div><h3>{selected?.salary}</h3></div><div><div className="eyebrow">Match</div><h3>{selected?.match}%</h3></div></div><p className="muted">Build product experiences with a collaborative engineering team. This is synthetic portfolio content.</p><div className="chips">{selected?.skills?.map(skill=><span key={skill}>{skill}</span>)}</div>
+    </DemoModal>
   </div></section>
 }
 
