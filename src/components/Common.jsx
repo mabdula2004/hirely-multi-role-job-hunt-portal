@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, ChevronRight, Download, MapPin, Bookmark, Heart } from "lucide-react";
+import { Check, ChevronRight, Download, MapPin, Bookmark, Heart, X } from "lucide-react";
 
 export function SectionTitle({ eyebrow, title, text, action }) {
   return <div className="section-title">
@@ -108,7 +108,7 @@ export function BarChart({ values }) {
   </>;
 }
 
-export function PublicJobCard({ job, saved, onSave, onApply }) {
+export function PublicJobCard({ job, saved, onSave, onApply, onDetails }) {
   return <article className="card job-card">
     <div className="job-top">
       <div className="company-logo">{job.logo}</div>
@@ -122,13 +122,13 @@ export function PublicJobCard({ job, saved, onSave, onApply }) {
     <div className="salary-line"><b>{job.salary}</b><span>{job.match}% match</span></div>
     <div className="posted">{job.posted} - {job.verified ? "Verified employer" : "Employer"}</div>
     {onApply && <div className="dual">
-      <button className="secondary">Details</button>
+      <button className="secondary" onClick={onDetails}>Details</button>
       <button className="primary" onClick={onApply}>Apply now</button>
     </div>}
   </article>;
 }
 
-export function DashJobCard({ job, onApply, onRemove }) {
+export function DashJobCard({ job, onApply, onRemove, onDetails }) {
   return <article className="card dash-job">
     <div className="job-top">
       <div className="company-logo">{job.logo}</div>
@@ -138,7 +138,7 @@ export function DashJobCard({ job, onApply, onRemove }) {
     <div className="meta-line"><span><MapPin size={13} />{job.location}</span><span>{job.salary}</span></div>
     <div className="chips">{job.skills.map((skill) => <span key={skill}>{skill}</span>)}</div>
     <div className="match-bar"><span>{job.match}% match</span><div className="progress"><i style={{ width: job.match + "%" }} /></div></div>
-    <div className="dual"><button className="secondary">View details</button><button className="primary" onClick={onApply}>Apply</button></div>
+    <div className="dual"><button className="secondary" onClick={onDetails}>View details</button><button className="primary" onClick={onApply}>Apply</button></div>
   </article>;
 }
 
@@ -156,5 +156,20 @@ export function ActivityFeed({ items }) {
       <div><b>{item.action}</b><small>{item.actor} - {item.target}</small></div>
       <time>{item.time}</time>
     </div>)}
+  </div>;
+}
+
+
+export function DemoModal({ open, title, subtitle, children, onClose, footer }) {
+  if (!open) return null;
+  return <div className="modal-backdrop" onMouseDown={onClose}>
+    <div className="demo-modal" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e)=>e.stopPropagation()}>
+      <div className="modal-head">
+        <div><div className="eyebrow">Interactive demo</div><h3>{title}</h3>{subtitle && <p>{subtitle}</p>}</div>
+        <button className="icon-plain" aria-label="Close modal" onClick={onClose}><X size={18}/></button>
+      </div>
+      <div className="modal-body">{children}</div>
+      {footer && <div className="modal-footer">{footer}</div>}
+    </div>
   </div>;
 }
