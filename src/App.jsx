@@ -43,7 +43,7 @@ export default function App(){
     <AnimatePresence mode="wait">
       <motion.div key={page} initial={{opacity:0,y:7}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:.18}}>
         {page==="home"&&<HomePage go={go}/>}
-        {page==="jobs"&&<JobsPage saved={saved} setSaved={setSaved} query={query} setQuery={setQuery} workMode={workMode} setWorkMode={setWorkMode} toast={setToast}/>}
+        {page==="jobs"&&<JobsPage saved={saved} setSaved={setSaved} query={query} setQuery={setQuery} workMode={workMode} setWorkMode={setWorkMode} toast={setToast} openAuth={()=>{setAuthMode("signin");go("auth")}}/>}
         {page==="companies"&&<CompaniesPage toast={setToast}/>}
         {page==="auth"&&<AuthPage mode={authMode} setMode={setAuthMode} login={login}/>}
         {page==="dashboard"&&role&&<Workspace role={role} section={section} setSection={setSection} onLogout={()=>{setRole(null);setSection("Overview");go("home")}} toast={setToast}/>}
