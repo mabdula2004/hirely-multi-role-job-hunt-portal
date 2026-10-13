@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { BellRing, CalendarClock, Check, Filter, LockKeyhole, MessageSquare, Paperclip, Plus, Search, Send, Sparkles, Trash2, Upload } from "lucide-react";
 import { applications, jobs } from "../data/mockData";
-import { BarChart, DashJobCard, DataTable, Field, ListRow, PanelTitle, Progress, SettingToggle, Stat, Status, Toggle } from "../components/Common";
+import { BarChart, DashJobCard, DataTable, DemoModal, Field, ListRow, PanelTitle, Progress, SettingToggle, Stat, Status, Toggle } from "../components/Common";
 
-export function CandidatePages({ section, toast }) {
+export function CandidatePages({ section, toast, navigate }) {
   switch (section) {
-    case "Overview": return <Overview />;
+    case "Overview": return <Overview navigate={navigate} />;
     case "Find Jobs": return <FindJobs toast={toast} />;
     case "Recommended": return <Recommended toast={toast} />;
     case "Saved Jobs": return <SavedJobs toast={toast} />;
@@ -20,7 +20,7 @@ export function CandidatePages({ section, toast }) {
   }
 }
 
-function Overview() {
+function Overview({ navigate }) {
   return <>
     <div className="stats">
       <Stat label="Applications" value="8" note="+2 this week" tone="good" />
@@ -39,7 +39,7 @@ function Overview() {
         <Progress label="Skills coverage" value={88} />
         <Progress label="Profile completeness" value={82} />
         <Progress label="Experience detail" value={74} />
-        <button className="primary">Improve profile</button>
+        <button className="primary" onClick={() => navigate("Career Profile")}>Improve profile</button>
       </div>
     </div>
     <div className="card panel spaced">
@@ -56,34 +56,52 @@ function Overview() {
 function FindJobs({ toast }) {
   const [q, setQ] = useState("");
   const [mode, setMode] = useState("All");
+  const [type, setType] = useState("All");
+  const [minMatch, setMinMatch] = useState(0);
+  const [more, setMore] = useState(false);
+  const [modal, setModal] = useState(null);
   const filtered = jobs.filter((job) =>
     (!q || JSON.stringify(job).toLowerCase().includes(q.toLowerCase())) &&
-    (mode === "All" || job.mode === mode)
+    (mode === "All" || job.mode === mode) &&
+    (type === "All" || job.type === type) &&
+    job.match >= minMatch
   );
   return <>
     <div className="card compact-search">
       <Search size={17} />
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search jobs, companies or skills" />
       <select value={mode} onChange={(e) => setMode(e.target.value)}><option>All</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select>
-      <button className="secondary"><Filter size={15} />More filters</button>
+      <button className="secondary" onClick={() => setMore(!more)}><Filter size={15} />{more ? "Hide filters" : "More filters"}</button>
     </div>
+    {more && <div className="card advanced-filters">
+      <Field label="Employment type"><select value={type} onChange={(e)=>setType(e.target.value)}><option>All</option><option>Full-time</option><option>Internship</option></select></Field>
+      <Field label="Minimum match"><select value={minMatch} onChange={(e)=>setMinMatch(Number(e.target.value))}><option value="0">Any match</option><option value="85">85%+</option><option value="90">90%+</option><option value="95">95%+</option></select></Field>
+      <button className="secondary mini" onClick={()=>{setType("All");setMinMatch(0)}}>Clear filters</button>
+    </div>}
     <div className="section-tools"><span>{filtered.length} matching roles</span><span>Sorted by relevance</span></div>
-    <div className="grid2">{filtered.map((job) => <DashJobCard key={job.id} job={job} onApply={() => toast("Application flow opened")} />)}</div>
+    <div className="grid2">{filtered.map((job) => <DashJobCard key={job.id} job={job} onDetails={() => setModal({job,mode:"details"})} onApply={() => setModal({job,mode:"apply"})} />)}</div>
+    <CandidateJobModal modal={modal} close={()=>setModal(null)} toast={toast}/>
   </>;
 }
 
 function Recommended({ toast }) {
+  const [modal,setModal]=useState(null);
   return <>
     <div className="insight-banner"><Sparkles size={20} /><div><b>Your strongest matches are remote React roles.</b><span>Based on synthetic skills, location preference and profile data.</span></div></div>
-    <div className="grid2">{[jobs[5], jobs[0], jobs[1], jobs[3]].map((job) => <DashJobCard key={job.id} job={job} onApply={() => toast("Application flow opened")} />)}</div>
+    <div className="grid2">{[jobs[5], jobs[0], jobs[1], jobs[3]].map((job) => <DashJobCard key={job.id} job={job} onDetails={()=>setModal({job,mode:"details"})} onApply={() => setModal({job,mode:"apply"})} />)}</div>
+    <CandidateJobModal modal={modal} close={()=>setModal(null)} toast={toast}/>
   </>;
 }
 
 function SavedJobs({ toast }) {
   const [saved, setSaved] = useState([jobs[0], jobs[3], jobs[1]]);
+  const [descending,setDescending]=useState(true);
+  const [modal,setModal]=useState(null);
+  const sorted=[...saved].sort((a,b)=>descending?b.match-a.match:a.match-b.match);
   return <>
-    <div className="section-tools"><span>{saved.length} saved opportunities</span><button className="secondary"><Filter size={15} />Sort by match</button></div>
-    <div className="grid2">{saved.map((job) => <DashJobCard key={job.id} job={job} onApply={() => toast("Application flow opened")} onRemove={() => { setSaved(saved.filter((x) => x.id !== job.id)); toast("Removed from saved jobs"); }} />)}</div>
+    <div className="section-tools"><span>{saved.length} saved opportunities</span><button className="secondary" onClick={()=>setDescending(!descending)}><Filter size={15} />Match {descending?"high to low":"low to high"}</button></div>
+    <div className="grid2">{sorted.map((job) => <DashJobCard key={job.id} job={job} onDetails={()=>setModal({job,mode:"details"})} onApply={() => setModal({job,mode:"apply"})} onRemove={() => { setSaved(saved.filter((x) => x.id !== job.id)); toast("Removed from saved jobs"); }} />)}</div>
+    <CandidateJobModal modal={modal} close={()=>setModal(null)} toast={toast}/>
   </>;
 }
 
@@ -125,6 +143,7 @@ function Messages({ toast }) {
   const [active, setActive] = useState(people[0]);
   const [text, setText] = useState("");
   const [sent, setSent] = useState([]);
+  const [attachment, setAttachment] = useState("");
   return <div className="message-layout">
     <div className="card panel">
       <PanelTitle eyebrow="Inbox" title="Recruiter conversations" />
@@ -136,7 +155,7 @@ function Messages({ toast }) {
     <div className="card chat-panel">
       <div className="chat-head"><div className="avatar">{active[0]}</div><div><b>{active}</b><small>Active recently</small></div></div>
       <div className="chat-body"><div className="bubble">Thanks for the update. I wanted to confirm the next step.</div><div className="bubble mine">Absolutely. I will send the details here.</div>{sent.map((m, i) => <div className="bubble mine" key={i}>{m}</div>)}</div>
-      <div className="composer"><button className="icon-plain"><Paperclip size={17} /></button><input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message..." /><button className="primary square" onClick={() => { if (text.trim()) { setSent([...sent, text]); setText(""); toast("Message added to demo thread"); } }}><Send size={16} /></button></div>
+      <div className="composer-wrap">{attachment && <div className="attachment-chip">portfolio.pdf <button onClick={()=>setAttachment("")}>x</button></div>}<div className="composer"><button className="icon-plain" onClick={()=>{setAttachment("portfolio.pdf");toast("Demo attachment added")}}><Paperclip size={17} /></button><input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message..." /><button className="primary square" onClick={() => { if (text.trim() || attachment) { setSent([...sent, text.trim() || "Attachment: portfolio.pdf"]); setText(""); setAttachment(""); toast("Message added to demo thread"); } }}><Send size={16} /></button></div></div>
     </div>
   </div>;
 }
@@ -169,14 +188,15 @@ function Profile({ toast }) {
 
 function Resumes({ toast }) {
   const [defaultId, setDefaultId] = useState(1);
-  const docs = [
+  const [docs,setDocs]=useState([
     { id: 1, name: "Frontend-Resume.pdf", date: "Updated today", size: "312 KB" },
     { id: 2, name: "FullStack-Resume.pdf", date: "Updated 3 days ago", size: "338 KB" },
     { id: 3, name: "Internship-Resume.pdf", date: "Updated 1 week ago", size: "296 KB" }
-  ];
+  ]);
+  const upload=()=>{if(!docs.some(d=>d.name==="React-Resume.pdf"))setDocs([...docs,{id:Date.now(),name:"React-Resume.pdf",date:"Added just now",size:"324 KB"}]);toast("Demo resume added")};
   return <div className="card panel">
-    <PanelTitle eyebrow="Documents" title="Resume Center" action={<button className="primary mini" onClick={() => toast("Upload resume opened")}><Upload size={14} />Upload resume</button>} />
-    {docs.map((doc) => <div className="resume-row" key={doc.id}><div className="pdf-icon">PDF</div><div><b>{doc.name}</b><small>{doc.date} - {doc.size}</small></div>{defaultId === doc.id ? <Status text="Default" /> : <button className="secondary mini" onClick={() => { setDefaultId(doc.id); toast("Default resume updated"); }}>Make default</button>}</div>)}
+    <PanelTitle eyebrow="Documents" title="Resume Center" action={<button className="primary mini" onClick={upload}><Upload size={14} />Upload resume</button>} />
+    {docs.map((doc) => <div className="resume-row" key={doc.id}><div className="pdf-icon">PDF</div><div><b>{doc.name}</b><small>{doc.date} - {doc.size}</small></div>{defaultId === doc.id ? <Status text="Default" /> : <button className="secondary mini" onClick={() => { setDefaultId(doc.id); toast("Default resume updated"); }}>Make default</button>}<button className="icon-plain" onClick={()=>toast(doc.name+" preview opened")}>View</button></div>)}
   </div>;
 }
 
@@ -204,4 +224,26 @@ function CandidateSettings({ toast }) {
       <div className="session-box"><LockKeyhole size={17} /><div><b>Current session</b><small>Chrome - Lahore - active now</small></div><Status text="Current" /></div>
     </div>
   </div>;
+}
+
+
+function CandidateJobModal({modal,close,toast}){
+  const[step,setStep]=useState(1);
+  if(!modal)return null;
+  const {job,mode}=modal;
+  const submit=()=>{toast("Demo application submitted");close();};
+  if(mode==="details")return <DemoModal open title={job.title} subtitle={job.company+" - "+job.location} onClose={close} footer={<button className="primary" onClick={()=>toast("Job saved from details")}>Save job</button>}>
+    <div className="modal-grid">
+      <div><div className="eyebrow">Compensation</div><h3>{job.salary}</h3></div>
+      <div><div className="eyebrow">Match</div><h3>{job.match}%</h3></div>
+    </div>
+    <h4>Role summary</h4><p className="muted">Build polished product experiences, collaborate with design and backend teams, and ship accessible responsive interfaces.</p>
+    <h4>Key skills</h4><div className="chips">{job.skills.map(s=><span key={s}>{s}</span>)}</div>
+  </DemoModal>;
+  return <DemoModal open title={"Apply - "+job.title} subtitle={job.company} onClose={close} footer={<><button className="secondary" onClick={()=>setStep(Math.max(1,step-1))} disabled={step===1}>Back</button>{step<3?<button className="primary" onClick={()=>setStep(step+1)}>Continue</button>:<button className="primary" onClick={submit}>Submit application</button>}</>}>
+    <div className="stepper"><span className={step>=1?"active":""}>1 Profile</span><span className={step>=2?"active":""}>2 Resume</span><span className={step>=3?"active":""}>3 Review</span></div>
+    {step===1&&<><Field label="Full name"><input defaultValue="Muhammad Abdullah"/></Field><Field label="Email"><input defaultValue="candidate@hirely.demo"/></Field></>}
+    {step===2&&<><Field label="Resume"><select defaultValue="Frontend-Resume.pdf"><option>Frontend-Resume.pdf</option><option>FullStack-Resume.pdf</option></select></Field><Field label="Cover note"><textarea defaultValue={"I am interested in the "+job.title+" opportunity."}/></Field></>}
+    {step===3&&<div className="review-box"><b>{job.title}</b><span>{job.company}</span><span>Frontend-Resume.pdf</span><span>Ready to submit demo application</span></div>}
+  </DemoModal>;
 }
