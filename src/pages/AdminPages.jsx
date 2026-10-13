@@ -1,7 +1,7 @@
 import React,{useState} from "react";
 import {Download,Eye,LockKeyhole,Plus,Search,UserCheck,UserX,Pencil} from "lucide-react";
 import {applications,auditLogs,categories,companies,jobs,tickets,users} from "../data/mockData";
-import {ActivityFeed,BarChart,DataTable,Field,ListRow,PanelTitle,Progress,SettingToggle,Stat,Status} from "../components/Common";
+import {ActivityFeed,BarChart,DataTable,DemoModal,Field,ListRow,PanelTitle,Progress,SettingToggle,Stat,Status} from "../components/Common";
 
 export function AdminPages({section,toast}){
   switch(section){
@@ -53,7 +53,7 @@ function UsersPage({toast}){
 function CompaniesPage({toast}){
   const[data,setData]=useState(companies);
   const verify=id=>{setData(data.map(c=>c.id===id?{...c,status:"Verified",risk:"Low"}:c));toast("Company verified")};
-  return <div className="card panel"><PanelTitle eyebrow="Trust & verification" title="Company management" action={<button className="secondary mini"><Download size={14}/>Export</button>}/>
+  return <div className="card panel"><PanelTitle eyebrow="Trust & verification" title="Company management" action={<button className="secondary mini" onClick={()=>{const rows=["Company,Sector,Open Jobs,Status",...data.map(c=>`${c.name},${c.sector},${c.jobs},${c.status}`)];const blob=new Blob([rows.join("\n")],{type:"text/csv"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="hirely-companies.csv";a.click();URL.revokeObjectURL(url);toast("Company CSV exported")}}><Download size={14}/>Export</button>}/>
     <DataTable heads={["Company","Sector","Open jobs","Risk","Status","Action"]} rows={data.map(c=>[
       <><b>{c.name}</b><small>{c.country} - {c.size}</small></>,c.sector,c.jobs,<Status text={c.risk}/>,<Status text={c.status}/>,
       c.status==="Pending"?<button className="primary mini" onClick={()=>verify(c.id)}>Verify</button>:<button className="secondary mini" onClick={()=>toast("Company review opened")}>Review</button>
@@ -63,9 +63,11 @@ function CompaniesPage({toast}){
 
 function JobsPage({toast}){
   const[data,setData]=useState(jobs);
+  const[filter,setFilter]=useState("All");
   const update=(id,status)=>{setData(data.map(j=>j.id===id?{...j,status}:j));toast("Job status updated")};
-  return <div className="card panel"><PanelTitle eyebrow="Marketplace quality" title="Job moderation" action={<div className="segmented"><button className="active">All</button><button>Flagged</button><button>Paused</button></div>}/>
-    <DataTable heads={["Job","Company","Applicants","Views","Status","Action"]} rows={data.map(j=>[
+  const visible=data.filter(j=>filter==="All"||(filter==="Paused"&&j.status==="Paused")||(filter==="Flagged"&&j.status==="Under review"));
+  return <div className="card panel"><PanelTitle eyebrow="Marketplace quality" title="Job moderation" action={<div className="segmented">{["All","Flagged","Paused"].map(x=><button key={x} className={filter===x?"active":""} onClick={()=>setFilter(x)}>{x}</button>)}</div>}/>
+    <DataTable heads={["Job","Company","Applicants","Views","Status","Action"]} rows={visible.map(j=>[
       <><b>{j.title}</b><small>{j.location} - {j.salary}</small></>,j.company,j.applicants,j.views,<Status text={j.status}/>,
       <div className="inline-btns"><button className="secondary mini" onClick={()=>update(j.id,"Active")}>Approve</button><button className="secondary mini danger" onClick={()=>update(j.id,"Paused")}>Pause</button></div>
     ])}/>
@@ -95,12 +97,19 @@ function ReportsPage({toast}){
 function TaxonomyPage({toast}){
   const[skills,setSkills]=useState(["JavaScript","React","React Native","Supabase","PostgreSQL","Python","UI/UX","Machine Learning"]);
   const[skill,setSkill]=useState("");
-  return <div className="two-col">
-    <div className="card panel"><PanelTitle eyebrow="Taxonomy" title="Job categories" action={<button className="primary mini" onClick={()=>toast("New category dialog opened")}><Plus size={14}/>Category</button>}/>
-      {categories.map(c=><div className="taxonomy-row" key={c.name}><div><b>{c.name}</b><small>{c.skills} mapped skills</small></div><strong>{c.jobs}</strong><span>jobs</span><button className="icon-plain"><Pencil size={14}/></button></div>)}
+  const[cats,setCats]=useState(categories);
+  const[editing,setEditing]=useState(null);
+  const[newCat,setNewCat]=useState(false);
+  return <>
+    <div className="two-col">
+      <div className="card panel"><PanelTitle eyebrow="Taxonomy" title="Job categories" action={<button className="primary mini" onClick={()=>setNewCat(true)}><Plus size={14}/>Category</button>}/>
+        {cats.map(c=><div className="taxonomy-row" key={c.name}><div><b>{c.name}</b><small>{c.skills} mapped skills</small></div><strong>{c.jobs}</strong><span>jobs</span><button className="icon-plain" onClick={()=>setEditing(c)}><Pencil size={14}/></button></div>)}
+      </div>
+      <div className="card panel"><PanelTitle eyebrow="Skill library" title="Skills"/><div className="skill-adder"><input value={skill} onChange={e=>setSkill(e.target.value)} placeholder="Add a skill"/><button className="primary mini" onClick={()=>{if(skill.trim()){setSkills([...skills,skill.trim()]);setSkill("");toast("Skill added")}}}>Add</button></div><div className="chips editable">{skills.map(s=><button key={s} onClick={()=>setSkills(skills.filter(x=>x!==s))}>{s} x</button>)}</div></div>
     </div>
-    <div className="card panel"><PanelTitle eyebrow="Skill library" title="Skills"/><div className="skill-adder"><input value={skill} onChange={e=>setSkill(e.target.value)} placeholder="Add a skill"/><button className="primary mini" onClick={()=>{if(skill.trim()){setSkills([...skills,skill.trim()]);setSkill("");toast("Skill added")}}}>Add</button></div><div className="chips editable">{skills.map(s=><button key={s} onClick={()=>setSkills(skills.filter(x=>x!==s))}>{s} x</button>)}</div></div>
-  </div>
+    <DemoModal open={!!editing} title="Edit category" subtitle={editing?.name} onClose={()=>setEditing(null)} footer={<button className="primary" onClick={()=>{toast("Category updated");setEditing(null)}}>Save category</button>}><Field label="Category name"><input defaultValue={editing?.name}/></Field><Field label="Mapped skills"><input defaultValue={editing?.skills}/></Field></DemoModal>
+    <DemoModal open={newCat} title="Create category" subtitle="Add a new synthetic marketplace category" onClose={()=>setNewCat(false)} footer={<button className="primary" onClick={()=>{setCats([...cats,{name:"Cybersecurity",jobs:0,skills:12}]);setNewCat(false);toast("Category created")}}>Create category</button>}><Field label="Category name"><input defaultValue="Cybersecurity"/></Field><Field label="Mapped skills"><input defaultValue="12"/></Field></DemoModal>
+  </>
 }
 
 function SupportPage({toast}){
