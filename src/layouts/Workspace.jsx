@@ -79,7 +79,7 @@ export default function Workspace({role,section,setSection,onLogout,toast}){
     <main className="main">
       <div className="demo-notice"><ShieldCheck size={16}/>Portfolio demo - all people, companies, jobs and hiring activity are synthetic.</div>
       <div className="dash-title"><div><div className="eyebrow">{role}</div><h1>{section}</h1><p>{subtitles[role][section]}</p></div><button className="icon-btn mobile side-toggle" onClick={()=>setOpen(!open)}><Menu size={18}/></button></div>
-      <RolePages section={section} toast={toast}/>
+      <RolePages section={section} toast={toast} navigate={setSection}/>
     </main>
   </div>
 }
