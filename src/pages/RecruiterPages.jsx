@@ -111,6 +111,8 @@ function TalentSearch({ toast }) {
   const [q, setQ] = useState("");
   const[advanced,setAdvanced]=useState(false);
   const[location,setLocation]=useState("All");
+  const[saved,setSaved]=useState([]);
+  const[selected,setSelected]=useState(null);
   const candidates = users.filter((u) => u.role === "Candidate" && (!q || JSON.stringify(u).toLowerCase().includes(q.toLowerCase())) && (location==="All"||u.location===location));
   return <>
     <div className="card compact-search"><Search size={17} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search candidates by skill, name or location" /><button className="secondary" onClick={()=>setAdvanced(!advanced)}><Filter size={15} />{advanced?"Hide filters":"Advanced filters"}</button></div>
@@ -119,26 +121,36 @@ function TalentSearch({ toast }) {
       {candidates.map((u, i) => <div className="card talent-card" key={u.id}>
         <div className="talent-top"><div className="avatar large">{u.name.split(" ").map((x) => x[0]).join("")}</div><div><h3>{u.name}</h3><p>{u.location} - Frontend / Full Stack</p></div><span className="match-pill">{[94, 91, 88, 86][i % 4]}% fit</span></div>
         <div className="chips"><span>React</span><span>JavaScript</span><span>Supabase</span></div>
-        <div className="dual"><button className="secondary" onClick={() => toast("Candidate saved to talent pool")}>Save</button><button className="primary" onClick={() => toast("Candidate profile opened")}>View profile</button></div>
+        <div className="dual"><button className="secondary" onClick={() => {setSaved(saved.includes(u.id)?saved.filter(id=>id!==u.id):[...saved,u.id]);toast(saved.includes(u.id)?"Removed from talent pool":"Saved to talent pool")}}>{saved.includes(u.id)?"Saved ✓":"Save"}</button><button className="primary" onClick={() => setSelected({...u,fit:[94,91,88,86][i%4]})}>View profile</button></div>
       </div>)}
     </div>
+    <DemoModal open={!!selected} title={selected?.name||"Candidate profile"} subtitle={(selected?.location||"")+" - Frontend / Full Stack"} onClose={()=>setSelected(null)} footer={<><button className="secondary" onClick={()=>{toast("Candidate saved to shortlist");setSelected(null)}}>Shortlist</button><button className="primary" onClick={()=>{toast("Interview invite created");setSelected(null)}}>Invite to interview</button></>}>
+      <div className="modal-grid"><div><div className="eyebrow">Fit score</div><h3>{selected?.fit}%</h3></div><div><div className="eyebrow">Availability</div><h3>2 weeks</h3></div></div><p className="muted">Synthetic candidate with relevant React, JavaScript and Supabase experience.</p><div className="chips"><span>React</span><span>JavaScript</span><span>Supabase</span><span>Git</span></div>
+    </DemoModal>
   </>;
 }
 
 function Interviews({ toast }) {
-  return <div className="two-col">
-    <div className="card panel">
-      <PanelTitle eyebrow="Schedule" title="Upcoming interviews" />
-      {[["10:30 AM", "Ayesha Khan", "Technical screen"], ["1:00 PM", "Sara Ahmed", "Portfolio review"], ["4:30 PM", "Mina Shah", "Hiring manager"]].map((x) =>
-        <div className="calendar-row" key={x[0]}><div className="time-pill">{x[0]}</div><div><b>{x[1]}</b><small>{x[2]} - Frontend Engineer</small></div><button className="secondary mini" onClick={() => toast("Interview room opened")}>Join</button></div>
-      )}
+  const[room,setRoom]=useState(null);
+  const[saved,setSaved]=useState(false);
+  return <>
+    <div className="two-col">
+      <div className="card panel">
+        <PanelTitle eyebrow="Schedule" title="Upcoming interviews" />
+        {[["10:30 AM", "Ayesha Khan", "Technical screen"], ["1:00 PM", "Sara Ahmed", "Portfolio review"], ["4:30 PM", "Mina Shah", "Hiring manager"]].map((x) =>
+          <div className="calendar-row" key={x[0]}><div className="time-pill">{x[0]}</div><div><b>{x[1]}</b><small>{x[2]} - Frontend Engineer</small></div><button className="secondary mini" onClick={() => setRoom(x)}>Join</button></div>
+        )}
+      </div>
+      <div className="card panel">
+        <PanelTitle eyebrow="Interview kit" title="Scorecard template" action={saved?<span className="status good">Saved ✓</span>:null}/>
+        {["Technical depth", "Problem solving", "Communication", "Product thinking"].map((label, i) => <div className="score-item" key={label}><span>{label}</span><div className="rating">{[1,2,3,4,5].map((n) => <Star key={n} size={15} fill={n <= 4 && i < 3 ? "currentColor" : "none"} />)}</div></div>)}
+        <button className="primary" onClick={() => {setSaved(true);toast("Scorecard saved")}}>Save scorecard</button>
+      </div>
     </div>
-    <div className="card panel">
-      <PanelTitle eyebrow="Interview kit" title="Scorecard template" />
-      {["Technical depth", "Problem solving", "Communication", "Product thinking"].map((label, i) => <div className="score-item" key={label}><span>{label}</span><div className="rating">{[1,2,3,4,5].map((n) => <Star key={n} size={15} fill={n <= 4 && i < 3 ? "currentColor" : "none"} />)}</div></div>)}
-      <button className="primary" onClick={() => toast("Scorecard saved")}>Save scorecard</button>
-    </div>
-  </div>;
+    <DemoModal open={!!room} title={"Interview room - "+(room?.[1]||"Candidate")} subtitle={(room?.[0]||"")+" - "+(room?.[2]||"")} onClose={()=>setRoom(null)} footer={<button className="primary" onClick={()=>{toast("Demo interview started");setRoom(null)}}>Start interview</button>}>
+      <div className="video-demo"><div className="video-tile recruiter-video"><div className="avatar large">OM</div><span>You - Recruiter</span></div><div className="video-tile"><div className="avatar large">{room?.[1]?.split(" ").map(x=>x[0]).join("")}</div><span>{room?.[1]}</span></div></div><div className="call-controls"><span>Mic on</span><span>Camera on</span><span>45 min slot</span></div>
+    </DemoModal>
+  </>;
 }
 
 function Messages({ toast }) {
@@ -184,13 +196,20 @@ function Analytics() {
 }
 
 function Templates({ toast }) {
-  const items = ["Frontend Engineer", "Full Stack Developer", "Product Designer", "React Native Engineer"];
-  return <div className="grid2">{items.map((x, i) => <div className="card template-card" key={x}><div className="template-icon">T{i+1}</div><div><div className="eyebrow">Template 0{i+1}</div><h3>{x}</h3><p>Reusable responsibilities, skill requirements and screening questions.</p></div><div className="dual"><button className="secondary" onClick={() => toast("Template duplicated")}><Copy size={14}/>Duplicate</button><button className="primary" onClick={() => toast("Template opened")}>Use template</button></div></div>)}</div>;
+  const [items,setItems]=useState(["Frontend Engineer", "Full Stack Developer", "Product Designer", "React Native Engineer"]);
+  const[selected,setSelected]=useState(null);
+  return <>
+    <div className="grid2">{items.map((x, i) => <div className="card template-card" key={x+i}><div className="template-icon">T{i+1}</div><div><div className="eyebrow">Template 0{i+1}</div><h3>{x}</h3><p>Reusable responsibilities, skill requirements and screening questions.</p></div><div className="dual"><button className="secondary" onClick={() => {setItems([...items,x+" Copy"]);toast("Template duplicated")}}><Copy size={14}/>Duplicate</button><button className="primary" onClick={() => setSelected(x)}>Use template</button></div></div>)}</div>
+    <DemoModal open={!!selected} title={"Use template - "+selected} subtitle="Pre-filled job draft" onClose={()=>setSelected(null)} footer={<button className="primary" onClick={()=>{toast("Job draft created from template");setSelected(null)}}>Create draft</button>}>
+      <Field label="Job title"><input defaultValue={selected||""}/></Field><Field label="Location"><input defaultValue="Remote"/></Field><Field label="Required skills"><input defaultValue="React, JavaScript, Git"/></Field><Field label="Description"><textarea defaultValue="Use this template as the starting point for the role."/></Field>
+    </DemoModal>
+  </>;
 }
 
 function RecruiterSettings({ toast }) {
   const [prefs, setPrefs] = useState({ digest: true, applicant: true, marketing: false, calendar: true });
-  return <div className="settings-grid">
+  const[invite,setInvite]=useState(false);
+  return <> <div className="settings-grid">
     <div className="card panel">
       <PanelTitle eyebrow="Recruiter account" title="Workspace preferences" />
       <Field label="Work email"><input defaultValue="recruiter@northstar.demo" /></Field>
@@ -209,7 +228,9 @@ function RecruiterSettings({ toast }) {
       <PanelTitle eyebrow="Team access" title="Recruiter permissions" />
       <ListRow avatar="OM" title="Omar Malik" sub="Admin recruiter - Full access" badge="Owner" />
       <ListRow avatar="DR" title="Daniel Reed" sub="Recruiter - Jobs & applicants" badge="Member" />
-      <button className="secondary" onClick={() => toast("Invite teammate opened")}><Plus size={15}/>Invite teammate</button>
+      <button className="secondary" onClick={() => setInvite(true)}><Plus size={15}/>Invite teammate</button>
     </div>
-  </div>;
+  </div>
+  <DemoModal open={invite} title="Invite recruiter" subtitle="Add a teammate to the synthetic company workspace" onClose={()=>setInvite(false)} footer={<button className="primary" onClick={()=>{toast("Demo invitation sent");setInvite(false)}}>Send invite</button>}><Field label="Work email"><input defaultValue="new.recruiter@northstar.demo"/></Field><Field label="Access level"><select defaultValue="Recruiter"><option>Recruiter</option><option>Admin recruiter</option></select></Field></DemoModal>
+  </>;
 }
