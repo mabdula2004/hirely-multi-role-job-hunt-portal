@@ -3,7 +3,7 @@ import {Download,Eye,LockKeyhole,Plus,Search,UserCheck,UserX,Pencil} from "lucid
 import {applications,auditLogs,categories,companies,jobs,tickets,users} from "../data/mockData";
 import {ActivityFeed,BarChart,DataTable,DemoModal,Field,ListRow,PanelTitle,Progress,SettingToggle,Stat,Status} from "../components/Common";
 
-export function AdminPages({section,toast}){
+export function AdminPages({section,toast,navigate}){
   switch(section){
     case"Overview":return <Overview/>;
     case"Users":return <UsersPage toast={toast}/>;
@@ -15,7 +15,7 @@ export function AdminPages({section,toast}){
     case"Support":return <SupportPage toast={toast}/>;
     case"Analytics":return <AnalyticsPage/>;
     case"Audit Logs":return <AuditPage/>;
-    case"Settings":return <SettingsPage toast={toast}/>;
+    case"Settings":return <SettingsPage toast={toast} navigate={navigate}/>;
     default:return null;
   }
 }
@@ -40,25 +40,44 @@ function Overview(){return <>
 function UsersPage({toast}){
   const[filter,setFilter]=useState("All");
   const[data,setData]=useState(users);
+  const[selected,setSelected]=useState(null);
   const list=data.filter(u=>filter==="All"||u.role===filter);
-  return <div className="card panel">
-    <PanelTitle eyebrow="Account operations" title="User management" action={<select value={filter} onChange={e=>setFilter(e.target.value)}><option>All</option><option>Candidate</option><option>Recruiter</option></select>}/>
-    <DataTable heads={["User","Role","Location","Status","Last active","Action"]} rows={list.map(u=>[
-      <><b>{u.name}</b><small>{u.email}</small></>,u.role,u.location,<Status text={u.status}/>,u.activity,
-      <div className="inline-btns"><button className="icon-plain" onClick={()=>toast("User profile opened")}><Eye size={15}/></button><button className="icon-plain" onClick={()=>{setData(data.map(x=>x.id===u.id?{...x,status:x.status==="Suspended"?"Active":"Suspended"}:x));toast("User status updated")}}>{u.status==="Suspended"?<UserCheck size={15}/>:<UserX size={15}/>}</button></div>
-    ])}/>
-  </div>
+  return <>
+    <div className="card panel">
+      <PanelTitle eyebrow="Account operations" title="User management" action={<select value={filter} onChange={e=>setFilter(e.target.value)}><option>All</option><option>Candidate</option><option>Recruiter</option></select>}/>
+      <DataTable heads={["User","Role","Location","Status","Last active","Action"]} rows={list.map(u=>[
+        <><b>{u.name}</b><small>{u.email}</small></>,u.role,u.location,<Status text={u.status}/>,u.activity,
+        <div className="inline-btns"><button className="icon-plain" onClick={()=>setSelected(u)}><Eye size={15}/></button><button className="icon-plain" onClick={()=>{setData(data.map(x=>x.id===u.id?{...x,status:x.status==="Suspended"?"Active":"Suspended"}:x));toast("User status updated")}}>{u.status==="Suspended"?<UserCheck size={15}/>:<UserX size={15}/>}</button></div>
+      ])}/>
+    </div>
+    <DemoModal open={!!selected} title={selected?.name||"User profile"} subtitle={selected?.email} onClose={()=>setSelected(null)} footer={<button className="primary" onClick={()=>{toast("User review completed");setSelected(null)}}>Complete review</button>}>
+      <div className="modal-grid"><div><div className="eyebrow">Role</div><h3>{selected?.role}</h3></div><div><div className="eyebrow">Status</div><h3>{selected?.status}</h3></div></div>
+      <div className="review-box"><span>Location: {selected?.location}</span><span>Joined: {selected?.joined}</span><span>Last active: {selected?.activity}</span><span>No active policy violations in this synthetic profile.</span></div>
+    </DemoModal>
+  </>
 }
 
 function CompaniesPage({toast}){
   const[data,setData]=useState(companies);
+  const[selected,setSelected]=useState(null);
   const verify=id=>{setData(data.map(c=>c.id===id?{...c,status:"Verified",risk:"Low"}:c));toast("Company verified")};
-  return <div className="card panel"><PanelTitle eyebrow="Trust & verification" title="Company management" action={<button className="secondary mini" onClick={()=>{const rows=["Company,Sector,Open Jobs,Status",...data.map(c=>`${c.name},${c.sector},${c.jobs},${c.status}`)];const blob=new Blob([rows.join("\n")],{type:"text/csv"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="hirely-companies.csv";a.click();URL.revokeObjectURL(url);toast("Company CSV exported")}}><Download size={14}/>Export</button>}/>
-    <DataTable heads={["Company","Sector","Open jobs","Risk","Status","Action"]} rows={data.map(c=>[
-      <><b>{c.name}</b><small>{c.country} - {c.size}</small></>,c.sector,c.jobs,<Status text={c.risk}/>,<Status text={c.status}/>,
-      c.status==="Pending"?<button className="primary mini" onClick={()=>verify(c.id)}>Verify</button>:<button className="secondary mini" onClick={()=>toast("Company review opened")}>Review</button>
-    ])}/>
-  </div>
+  const exportCsv=()=>{
+    const rows=["Company,Sector,Open Jobs,Status",...data.map(c=>[c.name,c.sector,c.jobs,c.status].join(","))];
+    const blob=new Blob([rows.join("\n")],{type:"text/csv"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="hirely-companies.csv";a.click();URL.revokeObjectURL(url);toast("Company CSV exported");
+  };
+  return <>
+    <div className="card panel"><PanelTitle eyebrow="Trust & verification" title="Company management" action={<button className="secondary mini" onClick={exportCsv}><Download size={14}/>Export</button>}/>
+      <DataTable heads={["Company","Sector","Open jobs","Risk","Status","Action"]} rows={data.map(c=>[
+        <><b>{c.name}</b><small>{c.country} - {c.size}</small></>,c.sector,c.jobs,<Status text={c.risk}/>,<Status text={c.status}/>,
+        c.status==="Pending"?<button className="primary mini" onClick={()=>verify(c.id)}>Verify</button>:<button className="secondary mini" onClick={()=>setSelected(c)}>Review</button>
+      ])}/>
+    </div>
+    <DemoModal open={!!selected} title={selected?.name||"Company review"} subtitle={(selected?.sector||"")+" - "+(selected?.country||"")} onClose={()=>setSelected(null)} footer={<><button className="secondary" onClick={()=>toast("Compliance note added")}>Add note</button><button className="primary" onClick={()=>{toast("Company review completed");setSelected(null)}}>Complete review</button></>}>
+      <div className="modal-grid"><div><div className="eyebrow">Risk</div><h3>{selected?.risk}</h3></div><div><div className="eyebrow">Open jobs</div><h3>{selected?.jobs}</h3></div></div>
+      <p className="muted">{selected?.about}</p><div className="review-box"><span>Company size: {selected?.size}</span><span>Location: {selected?.location}</span><span>Status: {selected?.status}</span><span>Verification documents: synthetic demo files</span></div>
+    </DemoModal>
+  </>
 }
 
 function JobsPage({toast}){
@@ -134,11 +153,11 @@ function AuditPage(){
   return <div className="card panel"><PanelTitle eyebrow="Security" title="Audit trail" action={<div className="search-small"><Search size={14}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search audit log"/></div>}/><DataTable heads={["Time","Actor","Action","Target","IP"]} rows={list.map(x=>[x.time,x.actor,x.action,<b>{x.target}</b>,x.ip])}/></div>
 }
 
-function SettingsPage({toast}){
+function SettingsPage({toast,navigate}){
   const[p,setP]=useState({verification:true,moderation:true,signup:true,maintenance:false,digest:true,security:true});
   return <div className="settings-grid">
     <div className="card panel"><PanelTitle eyebrow="Platform controls" title="Access & moderation"/><SettingToggle label="Require employer verification" sub="Unverified companies cannot publish jobs." checked={p.verification} onChange={()=>setP({...p,verification:!p.verification})}/><SettingToggle label="Automatic moderation" sub="Flag suspicious jobs and accounts for review." checked={p.moderation} onChange={()=>setP({...p,moderation:!p.moderation})}/><SettingToggle label="Public signup" sub="Allow candidate and recruiter registration." checked={p.signup} onChange={()=>setP({...p,signup:!p.signup})}/><SettingToggle label="Maintenance mode" sub="Temporarily restrict public access." checked={p.maintenance} onChange={()=>setP({...p,maintenance:!p.maintenance})}/></div>
     <div className="card panel"><PanelTitle eyebrow="Operations" title="Notifications & SLA"/><SettingToggle label="Admin daily digest" sub="Platform health and moderation summary." checked={p.digest} onChange={()=>setP({...p,digest:!p.digest})}/><SettingToggle label="Security alerts" sub="High-risk sign-in and permission events." checked={p.security} onChange={()=>setP({...p,security:!p.security})}/><Field label="Support email"><input defaultValue="support@hirely.demo"/></Field><Field label="Default review SLA"><select defaultValue="24 hours"><option>12 hours</option><option>24 hours</option><option>48 hours</option></select></Field><button className="primary" onClick={()=>toast("Platform settings saved")}>Save settings</button></div>
-    <div className="card panel security-panel"><PanelTitle eyebrow="Security" title="Admin session"/><div className="session-box"><LockKeyhole size={18}/><div><b>Current administrator</b><small>Chrome - Lahore - active now</small></div><Status text="Protected"/></div><button className="secondary" onClick={()=>toast("Security log opened")}>Review security activity</button></div>
+    <div className="card panel security-panel"><PanelTitle eyebrow="Security" title="Admin session"/><div className="session-box"><LockKeyhole size={18}/><div><b>Current administrator</b><small>Chrome - Lahore - active now</small></div><Status text="Protected"/></div><button className="secondary" onClick={()=>navigate("Audit Logs")}>Review security activity</button></div>
   </div>
 }
