@@ -120,22 +120,29 @@ function Interviews({ toast }) {
     ["Tomorrow - 11:00 AM", "OrbitPay", "Frontend Intern", "Hiring manager"],
     ["Oct 15 - 3:00 PM", "Aster Cloud", "Full Stack Developer", "Culture interview"]
   ];
-  return <div className="two-col">
-    <div className="card panel">
-      <PanelTitle eyebrow="Upcoming" title="Interview schedule" />
-      {interviews.map((item) => <div className="interview-row" key={item[0]}>
-        <div className="date-box"><CalendarClock size={18} /><span>{item[0]}</span></div>
-        <div><b>{item[1]}</b><small>{item[2]} - {item[3]}</small></div>
-        <button className="secondary mini" onClick={() => toast("Interview details opened")}>View</button>
-      </div>)}
+  const[selected,setSelected]=useState(null);
+  return <>
+    <div className="two-col">
+      <div className="card panel">
+        <PanelTitle eyebrow="Upcoming" title="Interview schedule" />
+        {interviews.map((item) => <div className="interview-row" key={item[0]}>
+          <div className="date-box"><CalendarClock size={18} /><span>{item[0]}</span></div>
+          <div><b>{item[1]}</b><small>{item[2]} - {item[3]}</small></div>
+          <button className="secondary mini" onClick={() => setSelected(item)}>View</button>
+        </div>)}
+      </div>
+      <div className="card panel">
+        <PanelTitle eyebrow="Preparation" title="Interview checklist" />
+        {["Review job requirements", "Prepare 2 project examples", "Test microphone and camera", "Write 3 questions for the team"].map((x, i) =>
+          <label className="check-row" key={x}><input type="checkbox" defaultChecked={i < 2} /><span>{x}</span></label>
+        )}
+      </div>
     </div>
-    <div className="card panel">
-      <PanelTitle eyebrow="Preparation" title="Interview checklist" />
-      {["Review job requirements", "Prepare 2 project examples", "Test microphone and camera", "Write 3 questions for the team"].map((x, i) =>
-        <label className="check-row" key={x}><input type="checkbox" defaultChecked={i < 2} /><span>{x}</span></label>
-      )}
-    </div>
-  </div>;
+    <DemoModal open={!!selected} title={selected?.[1]||"Interview"} subtitle={selected?.[2]} onClose={()=>setSelected(null)} footer={<button className="primary" onClick={()=>{toast("Interview added to calendar");setSelected(null)}}>Add to calendar</button>}>
+      <div className="modal-grid"><div><div className="eyebrow">When</div><h3>{selected?.[0]}</h3></div><div><div className="eyebrow">Round</div><h3>{selected?.[3]}</h3></div></div>
+      <div className="review-box"><b>Interview details</b><span>Google Meet demo room</span><span>45 minutes</span><span>Interviewer: Sarah Mitchell</span></div>
+    </DemoModal>
+  </>;
 }
 
 function Messages({ toast }) {
@@ -188,16 +195,22 @@ function Profile({ toast }) {
 
 function Resumes({ toast }) {
   const [defaultId, setDefaultId] = useState(1);
+  const [preview,setPreview]=useState(null);
   const [docs,setDocs]=useState([
     { id: 1, name: "Frontend-Resume.pdf", date: "Updated today", size: "312 KB" },
     { id: 2, name: "FullStack-Resume.pdf", date: "Updated 3 days ago", size: "338 KB" },
     { id: 3, name: "Internship-Resume.pdf", date: "Updated 1 week ago", size: "296 KB" }
   ]);
   const upload=()=>{if(!docs.some(d=>d.name==="React-Resume.pdf"))setDocs([...docs,{id:Date.now(),name:"React-Resume.pdf",date:"Added just now",size:"324 KB"}]);toast("Demo resume added")};
-  return <div className="card panel">
-    <PanelTitle eyebrow="Documents" title="Resume Center" action={<button className="primary mini" onClick={upload}><Upload size={14} />Upload resume</button>} />
-    {docs.map((doc) => <div className="resume-row" key={doc.id}><div className="pdf-icon">PDF</div><div><b>{doc.name}</b><small>{doc.date} - {doc.size}</small></div>{defaultId === doc.id ? <Status text="Default" /> : <button className="secondary mini" onClick={() => { setDefaultId(doc.id); toast("Default resume updated"); }}>Make default</button>}<button className="icon-plain" onClick={()=>toast(doc.name+" preview opened")}>View</button></div>)}
-  </div>;
+  return <>
+    <div className="card panel">
+      <PanelTitle eyebrow="Documents" title="Resume Center" action={<button className="primary mini" onClick={upload}><Upload size={14} />Upload resume</button>} />
+      {docs.map((doc) => <div className="resume-row" key={doc.id}><div className="pdf-icon">PDF</div><div><b>{doc.name}</b><small>{doc.date} - {doc.size}</small></div>{defaultId === doc.id ? <Status text="Default" /> : <button className="secondary mini" onClick={() => { setDefaultId(doc.id); toast("Default resume updated"); }}>Make default</button>}<button className="icon-plain" onClick={()=>setPreview(doc)}>View</button></div>)}
+    </div>
+    <DemoModal open={!!preview} title={preview?.name||"Resume preview"} subtitle={(preview?.date||"")+" - "+(preview?.size||"")} onClose={()=>setPreview(null)} footer={<button className="primary" onClick={()=>{toast("Resume downloaded in demo");setPreview(null)}}>Download</button>}>
+      <div className="resume-preview"><div className="resume-preview-head"><div className="profile-avatar small">MA</div><div><h3>Muhammad Abdullah</h3><p>Full Stack Developer</p></div></div><hr/><h4>Summary</h4><p>React and React Native developer focused on polished responsive products.</p><h4>Skills</h4><div className="chips"><span>React</span><span>JavaScript</span><span>Supabase</span><span>Git</span></div><h4>Projects</h4><p>Hirely multi-role job portal · Healthcare appointment management · AI-powered FYP portal</p></div>
+    </DemoModal>
+  </>;
 }
 
 function CandidateSettings({ toast }) {
